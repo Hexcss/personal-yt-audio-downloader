@@ -51,13 +51,27 @@ export async function downloadMP3(req: Request, res: Response) {
     console.log("Temp directory created.");
   }
 
+  let conversionTimer: NodeJS.Timeout;
+  let ffmpegCommand = ffmpeg();
+  let hasSentResponse = false;
+
+  const stopConversionDueToTimeout = () => {
+    console.warn("Conversion is taking too long. Stopping process.");
+    ffmpegCommand.kill('SIGKILL'); // Kill the ffmpeg process
+    res.status(400).send("Conversion took too long! Select a shorter video or try again later.");
+    hasSentResponse = true;
+  };
+
+  // Set up the timeout
+  conversionTimer = setTimeout(stopConversionDueToTimeout, 2 * 60 * 1000); // 2 minutes
+
   console.log("Starting audio conversion...");
-  ffmpeg()
+  ffmpegCommand
     .input(audioFormat.url)
     .inputFormat("webm")
     .audioCodec("libmp3lame")
     .audioBitrate('128k') // Reduced bitrate
-    .preset('faster') // Faster preset
+    .addOption('-preset', 'faster') // Faster preset
     .toFormat("mp3")
     .on("start", (commandLine) => {
       console.log("Spawned ffmpeg with command:", commandLine);
@@ -69,6 +83,7 @@ export async function downloadMP3(req: Request, res: Response) {
       console.error("Stderr output:", stderrLine);
     })
     .on("end", async () => {
+      clearTimeout(conversionTimer); // Clear the timeout
       console.log("Conversion finished.");
 
       // Upload the file to Firebase Storage
@@ -99,7 +114,9 @@ export async function downloadMP3(req: Request, res: Response) {
 
           const downloadURL = await getDownloadURL(storageRef);
           console.log("Sending download URL to client.");
-          res.send(downloadURL);
+          if (!hasSentResponse) {
+            res.send(downloadURL);
+          }
         })
         .catch((error) => {
           console.error("Error uploading the file:", error);
@@ -107,8 +124,11 @@ export async function downloadMP3(req: Request, res: Response) {
         });
     })
     .on("error", (err) => {
+      clearTimeout(conversionTimer); // Clear the timeout
       console.error("Error during conversion:", err);
-      res.sendStatus(500);
+      if (!hasSentResponse) {
+        res.sendStatus(500);
+    }
     })
     .save(tempFilePath);
 }
