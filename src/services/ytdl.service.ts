@@ -1,6 +1,15 @@
 import { Request, Response } from "express";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from "../firebase/firebase";
 import ytdl from "ytdl-core";
 import ffmpeg from "fluent-ffmpeg";
+import path from 'path';
+import fs from 'fs';
+
+// Function to sanitize the video title for use as a filename
+function sanitizeFilename(filename: string): string {
+  return filename.replace(/[<>:"/\\|?*]+/g, '_');
+}
 
 export async function downloadMP3(req: Request, res: Response) {
   const url = req.body.url;
@@ -22,27 +31,48 @@ export async function downloadMP3(req: Request, res: Response) {
     return res.status(400).send("No suitable audio format found.");
   }
 
-  res.header("Content-Disposition", 'attachment; filename="audio.mp3"');
+  // Use sanitized video title as filename
+  const videoTitle = sanitizeFilename(info.videoDetails.title);
+  const tempFileName = `${videoTitle}.mp3`;
 
-  let ffmpegErrorOccurred = false;
+  // Relative path to the temp directory
+  const tempFolderPath = path.join(__dirname, '../temp');
+  const tempFilePath = path.join(tempFolderPath, tempFileName);
+
+  // Ensure the temp folder exists
+  if (!fs.existsSync(tempFolderPath)) {
+    fs.mkdirSync(tempFolderPath);
+  }
 
   ffmpeg()
     .input(audioFormat.url)
     .inputFormat("webm")
     .audioCodec("libmp3lame")
     .toFormat("mp3")
-    .on("end", () => {
+    .on("end", async () => {
       console.log("Conversion finished.");
+
+      // Upload the file to Firebase Storage
+      const storageRef = ref(storage, tempFileName);
+      const fileBytes = await fs.promises.readFile(tempFilePath);
+
+      uploadBytes(storageRef, fileBytes).then(async snapshot => {
+        console.log('Uploaded the file!');
+
+        // Delete the temporary file and folder
+        fs.unlinkSync(tempFilePath);
+        fs.rmdirSync(tempFolderPath);
+
+        const downloadURL = await getDownloadURL(storageRef);
+        res.send(downloadURL);
+      }).catch(error => {
+        console.error("Error uploading the file:", error);
+        res.sendStatus(500);
+      });
     })
     .on("error", (err) => {
       console.error("Error:", err);
-      ffmpegErrorOccurred = true;
+      res.sendStatus(500);
     })
-    .on("close", () => {
-      // Handle the error after the stream is closed
-      if (ffmpegErrorOccurred && !res.writableEnded) {
-        res.sendStatus(500);
-      }
-    })
-    .pipe(res, { end: true });
+    .save(tempFilePath);
 }
