@@ -5,6 +5,7 @@ import { useHelmet, useCors, rateLimiter } from "./middlewares/security";
 
 const app = express();
 
+app.set('trust proxy', 1);
 app.use(express.json());
 
 // Use Helmet for security headers
