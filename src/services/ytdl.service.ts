@@ -5,7 +5,6 @@ import ffmpeg from "fluent-ffmpeg";
 export async function downloadMP3(req: Request, res: Response) {
   const url = req.body.url;
 
-  // Handling both 'https://youtu.be/' and 'https://www.youtube.com/watch?v=' formats
   if (
     !url ||
     (!url.includes("youtu.be/") && !url.includes("youtube.com/watch?v="))
@@ -25,9 +24,11 @@ export async function downloadMP3(req: Request, res: Response) {
 
   res.header("Content-Disposition", 'attachment; filename="audio.mp3"');
 
+  let ffmpegErrorOccurred = false;
+
   ffmpeg()
     .input(audioFormat.url)
-    .inputFormat("webm") // Explicitly set input format
+    .inputFormat("webm")
     .audioCodec("libmp3lame")
     .toFormat("mp3")
     .on("end", () => {
@@ -35,7 +36,13 @@ export async function downloadMP3(req: Request, res: Response) {
     })
     .on("error", (err) => {
       console.error("Error:", err);
-      res.sendStatus(500);
+      ffmpegErrorOccurred = true;
+    })
+    .on("close", () => {
+      // Handle the error after the stream is closed
+      if (ffmpegErrorOccurred && !res.writableEnded) {
+        res.sendStatus(500);
+      }
     })
     .pipe(res, { end: true });
 }
