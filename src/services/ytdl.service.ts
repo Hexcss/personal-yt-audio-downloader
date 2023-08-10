@@ -3,12 +3,12 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "../firebase/firebase";
 import ytdl from "ytdl-core";
 import ffmpeg from "fluent-ffmpeg";
-import path from 'path';
-import fs from 'fs';
+import path from "path";
+import fs from "fs";
 
 // Function to sanitize the video title for use as a filename
 function sanitizeFilename(filename: string): string {
-  return filename.replace(/[<>:"/\\|?*]+/g, '_');
+  return filename.replace(/[<>:"/\\|?*]+/g, "_");
 }
 
 export async function downloadMP3(req: Request, res: Response) {
@@ -41,7 +41,7 @@ export async function downloadMP3(req: Request, res: Response) {
   const tempFileName = `${videoTitle}.mp3`;
 
   // Relative path to the temp directory
-  const tempFolderPath = path.join(__dirname, '../temp');
+  const tempFolderPath = path.join(__dirname, "../temp");
   const tempFilePath = path.join(tempFolderPath, tempFileName);
 
   // Ensure the temp folder exists
@@ -57,6 +57,15 @@ export async function downloadMP3(req: Request, res: Response) {
     .inputFormat("webm")
     .audioCodec("libmp3lame")
     .toFormat("mp3")
+    .on("start", (commandLine) => {
+      console.log("Spawned ffmpeg with command:", commandLine);
+    })
+    .on("progress", (progress) => {
+      console.log(`Processing: ${progress.percent}% done`);
+    })
+    .on("stderr", (stderrLine) => {
+      console.error("Stderr output:", stderrLine);
+    })
     .on("end", async () => {
       console.log("Conversion finished.");
 
@@ -65,31 +74,35 @@ export async function downloadMP3(req: Request, res: Response) {
       const storageRef = ref(storage, tempFileName);
       const fileBytes = await fs.promises.readFile(tempFilePath);
 
-      uploadBytes(storageRef, fileBytes).then(async snapshot => {
-        console.log('Uploaded the file to Firebase Storage successfully!');
+      uploadBytes(storageRef, fileBytes)
+        .then(async (snapshot) => {
+          console.log("Uploaded the file to Firebase Storage successfully!");
 
-        // Delete the temporary file
-        console.log("Deleting temporary file...");
-        fs.unlinkSync(tempFilePath);
-        console.log("Temporary file deleted.");
+          // Delete the temporary file
+          console.log("Deleting temporary file...");
+          fs.unlinkSync(tempFilePath);
+          console.log("Temporary file deleted.");
 
-        // Check if the temp directory only contains the temporary file we created
-        const directoryContents = fs.readdirSync(tempFolderPath);
-        if (directoryContents.length === 0) {
-          console.log("Deleting temporary directory...");
-          fs.rmSync(tempFolderPath, { recursive: true });
-          console.log("Temporary directory deleted.");
-        } else {
-          console.warn("Temp directory contains unexpected files. Not deleting.");
-        }
+          // Check if the temp directory only contains the temporary file we created
+          const directoryContents = fs.readdirSync(tempFolderPath);
+          if (directoryContents.length === 0) {
+            console.log("Deleting temporary directory...");
+            fs.rmSync(tempFolderPath, { recursive: true });
+            console.log("Temporary directory deleted.");
+          } else {
+            console.warn(
+              "Temp directory contains unexpected files. Not deleting."
+            );
+          }
 
-        const downloadURL = await getDownloadURL(storageRef);
-        console.log("Sending download URL to client.");
-        res.send(downloadURL);
-      }).catch(error => {
-        console.error("Error uploading the file:", error);
-        res.sendStatus(500);
-      });
+          const downloadURL = await getDownloadURL(storageRef);
+          console.log("Sending download URL to client.");
+          res.send(downloadURL);
+        })
+        .catch((error) => {
+          console.error("Error uploading the file:", error);
+          res.sendStatus(500);
+        });
     })
     .on("error", (err) => {
       console.error("Error during conversion:", err);
