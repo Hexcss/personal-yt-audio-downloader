@@ -61,7 +61,7 @@ export async function downloadMP3(req: Request, res: Response) {
 
         // Delete the temporary file and folder
         fs.unlinkSync(tempFilePath);
-        fs.rmdirSync(tempFolderPath);
+        fs.rmSync(tempFolderPath, { recursive: true });
 
         const downloadURL = await getDownloadURL(storageRef);
         res.send(downloadURL);
