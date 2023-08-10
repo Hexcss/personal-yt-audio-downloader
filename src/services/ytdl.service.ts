@@ -56,6 +56,8 @@ export async function downloadMP3(req: Request, res: Response) {
     .input(audioFormat.url)
     .inputFormat("webm")
     .audioCodec("libmp3lame")
+    .audioBitrate('128k') // Reduced bitrate
+    .preset('faster') // Faster preset
     .toFormat("mp3")
     .on("start", (commandLine) => {
       console.log("Spawned ffmpeg with command:", commandLine);
