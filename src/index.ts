@@ -3,6 +3,8 @@ import routes from "./routes";
 import { errorHandler } from "./middlewares";
 import { useHelmet, useCors, rateLimiter } from "./middlewares/security";
 
+const PORT = process.env.PORT || 3000;
+
 const app = express();
 
 app.set('trust proxy', 1);
@@ -21,6 +23,7 @@ app.use('/', routes);
 // Global error handler
 app.use(errorHandler);
 
-app.listen(3000, () => {
-    console.log("Server is running!");
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}!`);
 });
+
