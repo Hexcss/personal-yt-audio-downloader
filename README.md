@@ -20,8 +20,8 @@ A robust and scalable Express.js API that allows users to convert and download Y
 1. **Clone the repository:**
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/youtube-audio-downloader.git
-cd youtube-audio-downloader
+git clone https://github.com/Hexcss/personal-youtube-audio-downloader.git
+cd personal-youtube-audio-downloader
 ```
 
 2. **Install dependencies:**
