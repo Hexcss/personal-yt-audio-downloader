@@ -13,13 +13,9 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.x'
-
-    - name: Set CLOUDSDK_PYTHON for gcloud
-      run: echo "CLOUDSDK_PYTHON=python3" >> $GITHUB_ENV
+    - run: |
+        sudo apt-get install python2.7
+        export CLOUDSDK_PYTHON="/usr/bin/python2"
 
     - name: Setup gcloud CLI
       uses: google-github-actions/setup-gcloud@v1
