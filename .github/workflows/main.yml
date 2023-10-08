@@ -1,0 +1,41 @@
+name: Deploy to Google Cloud Run
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Login to Google Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: gcr.io
+        username: _json_key
+        password: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v2
+      with:
+        push: true
+        tags: gcr.io/${{ secrets.GCP_PROJECT_ID }}/ytdl-dev:latest
+
+    - name: Deploy to Google Cloud Run
+      env:
+        GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+      run: |
+        echo "$GCP_SA_KEY" > gcp-key.json
+        gcloud auth activate-service-account --key-file=gcp-key.json
+        gcloud config set project $GCP_PROJECT_ID
+        gcloud run deploy yt-downloader --image gcr.io/$GCP_PROJECT_ID/ytdl-dev:latest --region us-central-1 --platform managed --allow-unauthenticated
+        rm gcp-key.json
