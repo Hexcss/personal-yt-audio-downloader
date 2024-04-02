@@ -17,6 +17,8 @@ steps:
       - '--allow-unauthenticated'
       - '--project=$_GCLOUD_PROJECT'
       - '--set-secrets=NODE_ENV=DOWNLOADER_NODE_ENV:latest'
+      - '--set-secrets=PROJECT_ID=DOWNLOADER_PROJECT_ID:latest'
+      - '--set-secrets=STORAGE_BUCKET=STORAGE_BUCKET:latest'
       - '--service-account=$_SERVICE_ACCOUNT'
 
 options:

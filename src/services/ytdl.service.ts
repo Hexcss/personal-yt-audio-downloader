@@ -1,9 +1,10 @@
-import * as admin from "firebase-admin";
+import { GetSignedUrlConfig } from '@google-cloud/storage';
 import { Request, Response } from "express";
 import ytdl from "ytdl-core";
 import ffmpeg from "fluent-ffmpeg";
 import path from "path";
 import fs from "fs";
+import { bucket } from "../gcloud";
 
 function sanitizeFilename(filename: string): string {
   return filename.replace(/[<>:"/\\|?*]+/g, "_");
@@ -61,7 +62,7 @@ export async function downloadMP3(req: Request, res: Response) {
     hasSentResponse = true;
   };
 
-  conversionTimer = setTimeout(stopConversionDueToTimeout, 2 * 60 * 1000); // 2 minutes
+  conversionTimer = setTimeout(stopConversionDueToTimeout, 2 * 60 * 1000);
 
   console.log("Starting audio conversion...");
   ffmpegCommand
@@ -84,36 +85,35 @@ export async function downloadMP3(req: Request, res: Response) {
       clearTimeout(conversionTimer);
       console.log("Conversion finished.");
 
-      console.log("Uploading converted file to Firebase Storage...");
+      console.log("Uploading converted file to Cloud Storage...");
 
-      const bucket = admin.storage().bucket();
-      const tempFilePath = path.join(tempFolderPath, tempFileName);
-      const uploadPath = `uploads/${tempFileName}`; // Modify as needed
+      const uploadPath = `uploads/${tempFileName.replace(/ /g, "_")}`; 
+      await bucket.upload(tempFilePath, {
+        destination: uploadPath,
+      });
 
-      bucket
-        .upload(tempFilePath, {
-          destination: uploadPath,
-        })
-        .then(async (data) => {
-          const file = data[0];
-          console.log("Uploaded the file to Firebase Storage successfully!");
+      console.log("Uploaded the file to Cloud Storage successfully!");
+      fs.unlinkSync(tempFilePath);
 
-          fs.unlinkSync(tempFilePath);
-
-          const downloadURL = await file.getSignedUrl({
-            action: "read",
-            expires: "03-09-2491",
-          });
-
-          console.log("Sending download URL to client.");
-          if (!hasSentResponse) {
-            res.send(downloadURL[0]); 
-          }
-        })
-        .catch((error) => {
-          console.error("Error uploading the file:", error);
-          res.sendStatus(500);
-        });
+      try {
+        const options: GetSignedUrlConfig = {
+          version: 'v4',
+          action: 'read',
+          expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+        };
+    
+        const [signedUrl] = await bucket.file(uploadPath).getSignedUrl(options);
+    
+        console.log("Sending signed download URL to client.");
+        if (!hasSentResponse) {
+          res.send({ url: signedUrl });
+        }
+      } catch (error) {
+        console.error("Error generating signed URL:", error);
+        if (!hasSentResponse) {
+          res.status(500).send("Failed to generate download link. Please try again.");
+        }
+      }
     })
     .on("error", (err) => {
       clearTimeout(conversionTimer);
