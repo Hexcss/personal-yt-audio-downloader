@@ -1,18 +1,61 @@
-import { initializeApp } from "firebase/app";
-import { getStorage } from "firebase/storage";
-import dotenv from "dotenv";
+import * as admin from 'firebase-admin';
+import { applicationDefault } from 'firebase-admin/app';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { environment } from '../config';
 
-dotenv.config();
+let serviceAccount: admin.ServiceAccount | undefined;
 
-const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY,
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.FIREBASE_APP_ID
-};
+console.log('Initializing Firebase...');
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-export const storage = getStorage(app);
+async function initializeFirebase(
+  account?: admin.ServiceAccount,
+): Promise<void> {
+  try {
+    if (environment.nodeEnv === 'production') {
+      admin.initializeApp({
+        credential: applicationDefault(),
+      });
+    } else if (account !== undefined) {
+      admin.initializeApp({
+        credential: admin.credential.cert(account),
+      });
+    }
+  } catch (error) {
+    console.error('Failed to initialize Firebase', error);
+    throw error;
+  }
+}
+
+if (environment.nodeEnv !== 'production') {
+  try {
+    const serviceAccountPath = join(
+      __dirname,
+      '../../service-account.json',
+    );
+    const accountFile = readFileSync(serviceAccountPath, 'utf8');
+    serviceAccount = JSON.parse(accountFile) as admin.ServiceAccount;
+    initializeFirebase(serviceAccount)
+    .then(() => {
+      console.log('Firebase initialized with service account');
+    })
+    .catch((error) => {
+      console.error(
+        'Failed to initialize Firebase with service account',
+        error,
+      );
+    });
+  } catch (error) {
+    console.error('Failed to read serviceAccount from file', error);
+  }
+} else {
+  initializeFirebase()
+  .then(() => {
+    console.log('Firebase initialized with application default');
+  })
+  .catch((error) => {
+    console.error('Failed to initialize Firebase', error);
+  });
+}
+
+export const db = admin.firestore();

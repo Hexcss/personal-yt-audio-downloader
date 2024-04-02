@@ -8,7 +8,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "ts-node src/index.ts",
     "build": "tsc",
-    "dev": "ts-node-dev --respawn src/index.ts"
+    "dev": "ts-node-dev --respawn src/index.ts",
+    "gcloud": "tsc && functions-framework --target=service"
   },
   "keywords": [],
   "author": "",
@@ -25,11 +26,13 @@
     "typescript": "^5.1.6"
   },
   "dependencies": {
+    "@google-cloud/functions-framework": "^3.3.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express-rate-limit": "^6.9.0",
     "express-validator": "^7.0.1",
     "firebase": "^10.1.0",
+    "firebase-admin": "^12.0.0",
     "fluent-ffmpeg": "^2.1.2",
     "helmet": "^7.0.0",
     "uuid": "^9.0.0",

@@ -1,0 +1,27 @@
+steps:
+  - id: 'Deploying'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'functions'
+      - 'deploy'
+      - '$_PROJECT_NAME'
+      - '--gen2'
+      - '--source=.'
+      - '--trigger-http'
+      - '--min-instances=0'
+      - '--max-instances=1'
+      - '--runtime=nodejs20'
+      - '--region=$_REGION'
+      - '--entry-point=service'
+      - '--allow-unauthenticated'
+      - '--project=$_GCLOUD_PROJECT'
+      - '--set-secrets=NODE_ENV=DOWNLOADER_NODE_ENV:latest'
+      - '--service-account=$_SERVICE_ACCOUNT'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+tags:
+  - master
+  - beta
