@@ -1,4 +1,3 @@
-import { GetSignedUrlConfig } from '@google-cloud/storage';
 import { Request, Response } from "express";
 import ytdl from "ytdl-core";
 import ffmpeg from "fluent-ffmpeg";
@@ -95,24 +94,11 @@ export async function downloadMP3(req: Request, res: Response) {
       console.log("Uploaded the file to Cloud Storage successfully!");
       fs.unlinkSync(tempFilePath);
 
-      try {
-        const options: GetSignedUrlConfig = {
-          version: 'v4',
-          action: 'read',
-          expires: Date.now() + 15 * 60 * 1000, // 15 minutes
-        };
-    
-        const [signedUrl] = await bucket.file(uploadPath).getSignedUrl(options);
-    
-        console.log("Sending signed download URL to client.");
-        if (!hasSentResponse) {
-          res.send({ url: signedUrl });
-        }
-      } catch (error) {
-        console.error("Error generating signed URL:", error);
-        if (!hasSentResponse) {
-          res.status(500).send("Failed to generate download link. Please try again.");
-        }
+      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${uploadPath}`;
+
+      console.log("Sending download URL to client.");
+      if (!hasSentResponse) {
+        res.send(publicUrl);
       }
     })
     .on("error", (err) => {
