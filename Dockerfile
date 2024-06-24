@@ -32,8 +32,6 @@ COPY --from=builder /usr/src/app/package*.json ./
 # Install only production dependencies
 RUN npm install --only=production
 
-COPY .env .env
-
 # Set environment variable to disable YTDL update check
 ENV YTDL_NO_UPDATE=true
 
