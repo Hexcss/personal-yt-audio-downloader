@@ -36,6 +36,6 @@
     "fluent-ffmpeg": "^2.1.2",
     "helmet": "^7.0.0",
     "uuid": "^9.0.0",
-    "ytdl-core": "^4.11.5"
+    "ytdl-core": "github:eugabrielsilva/node-ytdl-core"
   }
 }
