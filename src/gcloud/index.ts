@@ -1,10 +1,15 @@
-import { Storage } from '@google-cloud/storage';
-import { environment } from '../config';
-import path from 'path';
+import * as admin from "firebase-admin";
+import * as dotenv from "dotenv";
 
-const storage = new Storage({
-  projectId: environment.projectId,
-  keyFilename: environment.nodeEnv !== 'production' ? 
-  path.join(__dirname, '../../service-account.json') : undefined,
+dotenv.config();
+
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY as string);
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
 });
-export const bucket = storage.bucket(environment.storageBucket);
+
+const bucket = admin.storage().bucket();
+
+export { bucket };

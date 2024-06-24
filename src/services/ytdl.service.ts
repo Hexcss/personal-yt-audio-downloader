@@ -3,7 +3,7 @@ import ytdl from "ytdl-core";
 import ffmpeg from "fluent-ffmpeg";
 import path from "path";
 import fs from "fs";
-import { bucket } from "../gcloud";
+import { bucket }  from "../gcloud/index";
 
 function sanitizeFilename(filename: string): string {
   return filename.replace(/[<>:"/\\|?*]+/g, "_");
@@ -84,21 +84,29 @@ export async function downloadMP3(req: Request, res: Response) {
       clearTimeout(conversionTimer);
       console.log("Conversion finished.");
 
-      console.log("Uploading converted file to Cloud Storage...");
+      console.log("Uploading converted file to Firebase Storage...");
 
       const uploadPath = `uploads/${tempFileName.replace(/ /g, "_")}`; 
       await bucket.upload(tempFilePath, {
         destination: uploadPath,
+        metadata: {
+          contentType: 'audio/mpeg',
+        },
       });
 
-      console.log("Uploaded the file to Cloud Storage successfully!");
+      console.log("Uploaded the file to Firebase Storage successfully!");
       fs.unlinkSync(tempFilePath);
 
-      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${uploadPath}`;
+      // Get the download URL
+      const file = bucket.file(uploadPath);
+      const [url] = await file.getSignedUrl({
+        action: 'read',
+        expires: '03-01-2025', // Set the expiration date
+      });
 
       console.log("Sending download URL to client.");
       if (!hasSentResponse) {
-        res.send(publicUrl);
+        res.send(url);
       }
     })
     .on("error", (err) => {
