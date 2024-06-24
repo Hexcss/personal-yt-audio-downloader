@@ -1,11 +1,5 @@
-version: '3'
-
 services:
   ytdl-app:
     build: .
-    image: ytdl-dev:latest
     ports:
       - "3000:3000"
-    volumes:
-      - ./src:/usr/src/app/src
-    command: ["ts-node", "src/index.ts"]
