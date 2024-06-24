@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import ytdl from "ytdl-core";
+import ytdl from "@distube/ytdl-core";
 import ffmpeg from "fluent-ffmpeg";
 import path from "path";
 import fs from "fs";
