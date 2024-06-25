@@ -3,8 +3,9 @@ import ytdl from "@distube/ytdl-core";
 import ffmpeg from "fluent-ffmpeg";
 import path from "path";
 import fs from "fs";
-import { bucket } from "../firebase";
+import { bucket, db } from "../firebase";
 import logger from "../utils/logger";
+import { v4 as uuidv4 } from "uuid";
 
 function sanitizeFilename(filename: string): string {
   return filename.replace(/[<>:"/\\|?*]+/g, "_");
@@ -13,10 +14,7 @@ function sanitizeFilename(filename: string): string {
 export async function downloadMP3(req: Request, res: Response) {
   const url = req.body.url;
 
-  if (
-    !url ||
-    (!url.includes("youtu.be/") && !url.includes("youtube.com/watch?v="))
-  ) {
+  if (!url || (!url.includes("youtu.be/") && !url.includes("youtube.com/watch?v="))) {
     logger.warn("Invalid YouTube URL provided.");
     return res.status(400).send("Invalid YouTube URL provided.");
   }
@@ -60,11 +58,7 @@ export async function downloadMP3(req: Request, res: Response) {
   const stopConversionDueToTimeout = () => {
     logger.warn("Conversion is taking too long. Stopping process.");
     ffmpegCommand.kill("SIGKILL");
-    res
-      .status(400)
-      .send(
-        "Conversion took too long! Select a shorter video or try again later."
-      );
+    res.status(400).send("Conversion took too long! Select a shorter video or try again later.");
     hasSentResponse = true;
   };
 
@@ -93,7 +87,7 @@ export async function downloadMP3(req: Request, res: Response) {
 
       logger.info("Uploading converted file to Firebase Storage...");
 
-      const uploadPath = `uploads/${tempFileName.replace(/ /g, "_")}`; 
+      const uploadPath = `uploads/${tempFileName.replace(/ /g, "_")}`;
       try {
         await bucket.upload(tempFilePath, {
           destination: uploadPath,
@@ -104,19 +98,16 @@ export async function downloadMP3(req: Request, res: Response) {
         logger.info("Uploaded the file to Firebase Storage successfully!");
         fs.unlinkSync(tempFilePath);
 
-        // Get the download URL
-        const file = bucket.file(uploadPath);
-        const [url] = await file.getSignedUrl({
-          action: 'read',
-          expires: '03-01-2025', // Set the expiration date
-        });
+        // Generate a slug and store it in Firestore
+        const slug = uuidv4();
+        await db.collection("files").doc(slug).set({ uploadPath });
 
-        logger.info("Sending download URL to client.");
+        logger.info("Sending slug to client.");
         if (!hasSentResponse) {
-          res.send(url);
+          res.send({ slug });
         }
       } catch (error) {
-        logger.error("Error during file upload or URL generation:", error);
+        logger.error("Error during file upload or slug generation:", error);
         if (!hasSentResponse) {
           res.sendStatus(500);
         }
