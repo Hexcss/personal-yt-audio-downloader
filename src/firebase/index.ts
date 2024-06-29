@@ -1,14 +1,23 @@
 import * as admin from "firebase-admin";
 import * as dotenv from "dotenv";
+import { environment } from "../config";
 
 dotenv.config();
 
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY as string);
+let serviceAccount: admin.ServiceAccount | string = "";
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-});
+if (environment.nodeEnv === "production") {
+  admin.initializeApp({
+    credential: admin.credential.applicationDefault(),
+    storageBucket: environment.storageBucket,
+  });
+} else {
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY as string);
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: environment.storageBucket,
+  });
+}
 
 const bucket = admin.storage().bucket();
 const db = admin.firestore();

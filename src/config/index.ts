@@ -10,6 +10,5 @@ const getEnvVariable = (key: string): string => {
   
   export const environment = {
     nodeEnv: getEnvVariable('NODE_ENV'),
-    storageBucket: getEnvVariable('STORAGE_BUCKET'),
-    projectId: getEnvVariable('PROJECT_ID'),
+    storageBucket: getEnvVariable('FIREBASE_STORAGE_BUCKET'),
   };

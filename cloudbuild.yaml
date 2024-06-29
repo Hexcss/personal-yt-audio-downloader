@@ -1,11 +1,18 @@
 steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: [ 'build', '-t', 'gcr.io/${_PROJECT_ID}/${_SERVICE_NAME}', '.' ]
-  
+    id: 'build'
+    waitFor: ['-']
+    env:
+      - 'DOCKER_BUILDKIT=1'
+
   - name: 'gcr.io/cloud-builders/docker'
     args: [ 'push', 'gcr.io/${_PROJECT_ID}/${_SERVICE_NAME}' ]
+    id: 'push-image'
+    waitFor: ['build']
 
-  - name: 'gcr.io/cloud-builders/gcloud'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
     args:
       - 'run'
       - 'deploy'
@@ -15,8 +22,11 @@ steps:
       - '--region=${_REGION}'
       - '--allow-unauthenticated'
       - '--min-instances=0'
-      - '--set-env-vars FIREBASE_SERVICE_ACCOUNT_KEY=${_FIREBASE_SERVICE_ACCOUNT_KEY}'
-      - '--set-env-vars FIREBASE_STORAGE_BUCKET=${_FIREBASE_STORAGE_BUCKET}'
+      - '--set-env-vars=FIREBASE_STORAGE_BUCKET=${_FIREBASE_STORAGE_BUCKET},NODE_ENV=${_NODE_ENV}'
+      - '--cpu=1'
+      - '--memory=2Gi'
+    id: 'deploy'
+    waitFor: ['push-image']
 
   - name: 'gcr.io/cloud-builders/docker'
     args: ['image', 'prune', '-f']
