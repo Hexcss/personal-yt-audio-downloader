@@ -22,7 +22,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['image', 'prune', '-f']
 
-availableSecret:
+availableSecrets:
   secretManager:
     - versionName: projects/${_PROJECT_ID}/secrets/FIREBASE_SERVICE_ACCOUNT_KEY/versions/latest
       env: 'FIREBASE_SERVICE_ACCOUNT_KEY'
