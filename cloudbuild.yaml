@@ -15,10 +15,19 @@ steps:
       - '--region=${_REGION}'
       - '--allow-unauthenticated'
       - '--min-instances=0'
-      - '--set-env-vars=FIREBASE_SERVICE_ACCOUNT_KEY=${_FIREBASE_SERVICE_ACCOUNT_KEY},FIREBASE_STORAGE_BUCKET=${_FIREBASE_STORAGE_BUCKET}'
+      - '--set-env-vars FIREBASE_SERVICE_ACCOUNT_KEY=$$FIREBASE_SERVICE_ACCOUNT_KEY'
+      - '--set-env-vars FIREBASE_STORAGE_BUCKET=$$FIREBASE_STORAGE_BUCKET'
+    secretEnv: ['FIREBASE_SERVICE_ACCOUNT_KEY', 'FIREBASE_STORAGE_BUCKET']
 
   - name: 'gcr.io/cloud-builders/docker'
     args: ['image', 'prune', '-f']
+
+availableSecret:
+  secretManager:
+    - versionName: projects/${_PROJECT_ID}/secrets/FIREBASE_SERVICE_ACCOUNT_KEY/versions/latest
+      env: 'FIREBASE_SERVICE_ACCOUNT_KEY'
+    - versionName: projects/${_PROJECT_ID}/secrets/FIREBASE_STORAGE_BUCKET/versions/latest
+      env: 'FIREBASE_STORAGE_BUCKET' 
 
 timeout: '1600s'
 
